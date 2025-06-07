@@ -112,6 +112,15 @@ class CarlaValidationEnv(gym.Env):
             vehicle.destroy()
         self.vehicles = []
 
+    def _get_actor_orientation(self, actor):
+        """액터의 회전값(yaw)을 바탕으로 남북(NS) 방향인지 동서(EW) 방향인지 판단합니다."""
+        yaw = actor.get_transform().rotation.yaw
+        # yaw 각도가 -45~45 또는 135~225(or -225~-135) 범위에 있으면 동서 방향으로 간주
+        if (yaw > -45 and yaw < 45) or (yaw > 135 and yaw < 225) or (yaw < -135 and yaw > -225):
+            return "EW"
+        else:
+            return "NS"
+
     def _setup_junctions(self):
         """SUMO의 21개 교차로 기준에 맞춰 CARLA의 신호등 액터를 강제로 그룹화합니다. (최종 수정)"""
 
@@ -171,6 +180,11 @@ class CarlaValidationEnv(gym.Env):
         if empty_groups:
             print(f"경고: 다음 {len(empty_groups)}개 교차로 그룹이 비어있습니다: {empty_groups}")
             print("이 교차로들은 관측/행동 계산에서 제외되지만, 모델 구조(21개)는 유지됩니다.")
+
+        self.actor_orientations = {}
+        for group in self.junctions:
+            for tl_actor in group:
+                self.actor_orientations[tl_actor.id] = self._get_actor_orientation(tl_actor)
 
         self.tl_phases = np.zeros(self.num_junctions, dtype=int)
         self.last_phase_change_step = np.zeros(self.num_junctions, dtype=int)
@@ -241,19 +255,30 @@ class CarlaValidationEnv(gym.Env):
         return obs, 0.0, done, False, {}
 
     def _apply_phase_to_lights(self):
-        """21개 논리 페이즈를 54개 물리적 신호등에 적용합니다."""
+        """21개 논리 페이즈를 각 신호등의 방향에 맞게 물리적 신호등에 적용합니다."""
         for i, junction_group in enumerate(self.junctions):
-            phase = self.tl_phases[i]
-            if phase == self.PHASE_NS_GREEN:
-                state = carla.TrafficLightState.Green
-            elif phase == self.PHASE_NS_YELLOW:
-                state = carla.TrafficLightState.Yellow
-            else:  # EW Green or Yellow
-                state = carla.TrafficLightState.Red  # EW 주행은 그룹의 다른 신호등이 처리한다고 가정
+            if not junction_group:  # 비어있는 그룹은 건너뜁니다.
+                continue
 
-            # 그룹 내 모든 신호등에 상태 적용 (단순화된 로직)
-            for tl in junction_group:
-                tl.set_state(state)
+            logical_phase = self.tl_phases[i]
+
+            for tl_actor in junction_group:
+                orientation = self.actor_orientations.get(tl_actor.id)
+
+                # 기본 상태는 '빨간불'
+                state_to_set = carla.TrafficLightState.Red
+
+                if logical_phase == self.PHASE_NS_GREEN and orientation == "NS":
+                    state_to_set = carla.TrafficLightState.Green
+                elif logical_phase == self.PHASE_NS_YELLOW and orientation == "NS":
+                    state_to_set = carla.TrafficLightState.Yellow
+                elif logical_phase == self.PHASE_EW_GREEN and orientation == "EW":
+                    state_to_set = carla.TrafficLightState.Green
+                elif logical_phase == self.PHASE_EW_YELLOW and orientation == "EW":
+                    state_to_set = carla.TrafficLightState.Yellow
+
+                # 계산된 상태를 각 신호등 액터에 적용
+                tl_actor.set_state(state_to_set)
 
     def _get_observation(self):
         """CARLA 세계에서 21개 교차로에 대한 관측을 생성합니다."""
@@ -363,6 +388,15 @@ def create_carla_adjacency_matrix(net_file: str, tls_ids: list, threshold: float
 
     print(f"SUMO 좌표 기반 인접 행렬 생성 완료 ({num_junctions}x{num_junctions})")
     return adj_matrix
+
+    def _get_actor_orientation(self, actor):
+        """액터의 회전값(yaw)을 바탕으로 남북(NS) 방향인지 동서(EW) 방향인지 판단합니다."""
+        yaw = actor.get_transform().rotation.yaw
+        # yaw 각도가 -45~45 또는 135~225 범위에 있으면 동서 방향으로 간주
+        if (yaw > -45 and yaw < 45) or (yaw > 135 and yaw < 225) or (yaw > -225 and yaw < -135):
+            return "EW"
+        else:
+            return "NS"
 
 
 def main():
