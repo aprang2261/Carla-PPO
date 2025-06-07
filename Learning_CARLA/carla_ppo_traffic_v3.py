@@ -38,8 +38,8 @@ MAX_ACTIVE_VEHICLES = 200
 RESPAWN_INTERVAL = 20
 
 # 저장 경로 설정
-CHECKPOINT_DIR = "info/model_checkpoints_gnn_advanced"
-TENSORBOARD_LOG_DIR = "info/tensorboard_logs_gnn_advanced/"
+CHECKPOINT_DIR = "info/model_checkpoints"
+TENSORBOARD_LOG_DIR = "info/tensorboard_logs"
 
 # GNN/관측 공간 관련 상수
 GNN_ADJACENCY_THRESHOLD = 150.0  # 신호등을 인접하다고 판단할 최대 거리 (미터)

@@ -374,9 +374,6 @@ class MultiTLCarlaEnv(gym.Env):
         return obs, float(total_reward), done, False, info
 
     def _cleanup_actors(self):
-        """
-        기존 스폰된 차량 제거
-        """
         for v in self.vehicles:
             try:
                 if v and v.is_alive:
