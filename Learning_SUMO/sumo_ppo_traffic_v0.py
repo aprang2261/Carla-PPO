@@ -48,8 +48,8 @@ MIN_PHASE_DURATION_STEPS = 5
 YELLOW_LIGHT_DURATION_STEPS = 3
 
 # 저장 경로 설정
-CHECKPOINT_DIR = "info/town05_model_checkpoints_final"
-TENSORBOARD_LOG_DIR = "info/tensorboard_logs_final/"
+CHECKPOINT_DIR = "info/model_checkpoints"
+TENSORBOARD_LOG_DIR = "info/tensorboard_logs/"
 
 # GNN/관측 공간 관련 상수
 GNN_ADJACENCY_THRESHOLD = 200.0
@@ -75,7 +75,6 @@ os.makedirs(TENSORBOARD_LOG_DIR, exist_ok=True)
 # --- 모든 파일 생성 자동화 (최종 수정) ---
 
 def check_and_generate_net_file():
-    """TLS 네트워크 파일이 없으면 자동으로 생성합니다."""
     if os.path.exists(TLS_NET_FILE):
         print(f"'{TLS_NET_FILE}' 파일이 이미 존재합니다. 생성을 건너뜁니다.")
         return
@@ -108,7 +107,6 @@ def check_and_generate_net_file():
 
 
 def generate_random_traffic():
-    """randomTrips.py를 사용하여 랜덤 트래픽을 생성합니다."""
     random_trips_script = os.path.join(os.environ['SUMO_HOME'], 'tools', 'randomTrips.py')
 
     net_file_abs = os.path.abspath(TLS_NET_FILE)
@@ -134,7 +132,6 @@ def generate_random_traffic():
 
 
 def generate_sumo_config():
-    """SUMO 설정 파일을 생성합니다."""
     # .sumocfg 파일 내의 경로는 .sumocfg 파일 기준 상대 경로여야 하므로, 여기서는 파일 이름만 사용
     net_filename = os.path.basename(TLS_NET_FILE)
     vtypes_filename = os.path.basename(VTYPES_FILE)
@@ -149,7 +146,7 @@ def generate_sumo_config():
     </input>
     <time><begin value="0"/><step-length value="{SUMO_STEP_LENGTH}"/></time>
     <report><no-step-log value="true"/></report>
-</configuration>"""
+    </configuration>"""
     with open(SUMO_CONFIG_FILE, "w") as f:
         f.write(sumocfg_content)
     print(f"SUMO 설정 파일 '{SUMO_CONFIG_FILE}' 생성 완료.")
@@ -315,11 +312,6 @@ class SumoMultiTLGym(gym.Env):
 
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
-        # --- 수정된 부분: 파일 생성 로직 제거 ---
-        # 각 프로세스가 파일을 생성하지 않도록 이 부분을 주석 처리하거나 삭제합니다.
-        # generate_random_traffic()
-        # generate_sumo_config()
-        # --- 수정 끝 ---
 
         if traci.isLoaded():
             traci.close()
@@ -410,9 +402,6 @@ class SumoMultiTLGym(gym.Env):
 
 
 def make_single_env(tls_ids, rank, use_gui=False):
-    """
-    단일 환경을 생성하는 간단한 헬퍼 함수
-    """
     port = 8813 + rank
     env = SumoMultiTLGym(tls_ids=tls_ids, use_gui=use_gui, port=port)
     env = Monitor(env)
