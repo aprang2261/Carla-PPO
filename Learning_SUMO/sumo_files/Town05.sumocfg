@@ -1,8 +1,1 @@
-<configuration>
-    <input>
-        <net-file value="Town05.with_tls.net.xml"/>
-        <route-files value="carlavtypes.rou.xml,Town05.random.rou.xml"/>
-    </input>
-    <time><begin value="0"/><step-length value="1.0"/></time>
-    <report><no-step-log value="true"/></report>
-</configuration>
+<configuration><input><net-file value="Town05.with_tls.net.xml"/><route-files value="carlavtypes.rou.xml,Town05.random.rou.xml"/></input><time><begin value="0"/></time><report><no-step-log value="true"/></report></configuration>
